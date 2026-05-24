@@ -7,20 +7,29 @@ if [ ! -d /app/.git ]; then
     "${OPENWORK_REPO:-https://github.com/different-ai/openwork.git}" /app
 fi
 
-# OpenWork's Ollama extension hardcodes http://localhost:11434 in openai-image-extension.ts
-EXT_FILE="/app/apps/app/src/react-app/domains/settings/openai-image-extension.ts"
+# Patch every source file in the web app that hardcodes localhost:11434 or the default model
 OLLAMA_BASE_URL="${OLLAMA_BASE_URL:?OLLAMA_BASE_URL must be set in .env}"
 OLLAMA_DEFAULT_MODEL="${OLLAMA_MODEL:?OLLAMA_MODEL must be set in .env}"
-if [ -f "$EXT_FILE" ]; then
-  # Replace hardcoded localhost host — /v1 suffix is preserved from the original
-  sed -i \
-    -e "s|http://localhost:11434|${OLLAMA_BASE_URL%/}|g" \
-    -e "s|defaultModelId: \"qwen2.5-coder:7b\"|defaultModelId: \"${OLLAMA_DEFAULT_MODEL}\"|g" \
-    "$EXT_FILE"
-  echo "[openwork-web] Patched: baseURL → ${OLLAMA_BASE_URL%/}, defaultModel → ${OLLAMA_DEFAULT_MODEL}"
-  # Verify the patch landed
-  grep -n "baseURL\|defaultModelId" "$EXT_FILE" || true
+
+echo "[openwork-web] Scanning for hardcoded localhost:11434 in source..."
+MATCHES=$(grep -rl "localhost:11434" /app/apps/app/src/ 2>/dev/null || true)
+if [ -n "$MATCHES" ]; then
+  echo "$MATCHES" | while IFS= read -r f; do
+    sed -i "s|http://localhost:11434|${OLLAMA_BASE_URL%/}|g" "$f"
+    echo "[openwork-web] Patched $f"
+  done
+else
+  echo "[openwork-web] No additional files with localhost:11434 found"
 fi
+
+# Also fix the default model name in the known config file
+EXT_FILE="/app/apps/app/src/react-app/domains/settings/openai-image-extension.ts"
+if [ -f "$EXT_FILE" ]; then
+  sed -i "s|defaultModelId: \"qwen2.5-coder:7b\"|defaultModelId: \"${OLLAMA_DEFAULT_MODEL}\"|g" "$EXT_FILE"
+fi
+
+echo "[openwork-web] Post-patch occurrences of localhost:11434:"
+grep -rn "localhost:11434" /app/apps/app/src/ 2>/dev/null || echo "  (none — all clear)"
 
 # Bust Vite's pre-bundle cache so it recompiles the patched source
 rm -rf /app/apps/app/node_modules/.vite /app/node_modules/.vite

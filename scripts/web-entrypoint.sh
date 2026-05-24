@@ -14,7 +14,7 @@ OLLAMA_V1_URL="${OLLAMA_V1_URL%/}/v1"
 OLLAMA_DEFAULT_MODEL="${OLLAMA_MODEL:?OLLAMA_MODEL must be set in .env}"
 if [ -f "$EXT_FILE" ]; then
   sed -i \
-    -e "s|baseURL: \"http://localhost:11434/v1\"|baseURL: \"${OLLAMA_V1_URL}\"|g" \
+    -e "s|\"http://localhost:11434/v1\"|\"${OLLAMA_V1_URL}\"|g" \
     -e "s|defaultModelId: \"qwen2.5-coder:7b\"|defaultModelId: \"${OLLAMA_DEFAULT_MODEL}\"|g" \
     "$EXT_FILE"
   echo "[openwork-web] Ollama extension → ${OLLAMA_V1_URL} (default: ${OLLAMA_DEFAULT_MODEL})"

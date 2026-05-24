@@ -8,6 +8,14 @@ RUN apt-get update \
     unzip \
   && rm -rf /var/lib/apt/lists/*
 
+ENV BUN_INSTALL=/root/.bun
+ENV PATH="/root/.bun/bin:${PATH}"
+
+# Install at image build so runtime does not depend on bun.sh + unzip in a fresh volume
+RUN curl -fsSL https://bun.sh/install | bash \
+  && corepack enable \
+  && corepack prepare pnpm@10.27.0 --activate
+
 WORKDIR /app
 
 COPY scripts/web-entrypoint.sh /usr/local/bin/web-entrypoint.sh

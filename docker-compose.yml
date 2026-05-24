@@ -94,7 +94,6 @@ services:
     volumes:
       - openwork-web-cache:/app
       - pnpm-store:/root/.local/share/pnpm/store
-      - bun-install:/root/.bun
 
   share:
     build:
@@ -133,4 +132,3 @@ services:
 volumes:
   openwork-web-cache:
   pnpm-store:
-  bun-install:

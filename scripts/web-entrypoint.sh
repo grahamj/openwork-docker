@@ -1,20 +1,11 @@
 #!/bin/sh
 set -eu
 
-export BUN_INSTALL="/root/.bun"
-export PATH="$BUN_INSTALL/bin:$PATH"
-
 if [ ! -d /app/.git ]; then
   echo "[openwork-web] Cloning OpenWork source..."
   git clone --depth 1 --branch "${OPENWORK_GIT_REF:-dev}" \
     "${OPENWORK_REPO:-https://github.com/different-ai/openwork.git}" /app
 fi
-
-if ! command -v bun >/dev/null 2>&1; then
-  curl -fsSL https://bun.sh/install | bash
-fi
-
-corepack enable && corepack prepare pnpm@10.27.0 --activate
 
 if [ ! -d /app/node_modules ]; then
   echo "[openwork-web] Installing dependencies..."

@@ -51,8 +51,8 @@ services:
       OPENWORK_WAIT_FOR_OLLAMA: ${OPENWORK_WAIT_FOR_OLLAMA:-1}
       OPENWORK_ENABLE_OPENCODE_ROUTER: ${OPENWORK_ENABLE_OPENCODE_ROUTER:-1}
       OPENWORK_DEV_MODE: ${OPENWORK_DEV_MODE:-1}
-      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://192.168.50.202:11434}
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-gemma4-e4b-it-q4_K_M-98k}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:?Set OLLAMA_BASE_URL in .env}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:?Set OLLAMA_MODEL in .env}
       OPENCODE_CONFIG_FORCE: ${OPENCODE_CONFIG_FORCE:-0}
       DATABASE_URL: ${DATABASE_URL:-mysql://openwork:openwork@mysql:3306/openwork}
     volumes:
@@ -91,6 +91,8 @@ services:
       OPENWORK_REPO: ${OPENWORK_REPO:-https://github.com/different-ai/openwork.git}
       SHARE_PORT: ${SHARE_PORT:-3006}
       WEB_PORT: ${WEB_PORT:-5173}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:?Set OLLAMA_BASE_URL in .env}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:?Set OLLAMA_MODEL in .env}
     volumes:
       - openwork-web-cache:/app
       - pnpm-store:/root/.local/share/pnpm/store

@@ -9,15 +9,13 @@ fi
 
 # OpenWork's Ollama extension hardcodes http://localhost:11434 in openai-image-extension.ts
 EXT_FILE="/app/apps/app/src/react-app/domains/settings/openai-image-extension.ts"
-OLLAMA_V1_URL="${OLLAMA_BASE_URL:?OLLAMA_BASE_URL must be set in .env}"
-OLLAMA_V1_URL="${OLLAMA_V1_URL%/}/v1"
 OLLAMA_DEFAULT_MODEL="${OLLAMA_MODEL:?OLLAMA_MODEL must be set in .env}"
 if [ -f "$EXT_FILE" ]; then
   sed -i \
-    -e "s|\"http://localhost:11434/v1\"|\"${OLLAMA_V1_URL}\"|g" \
+    -e "s|\"http://localhost:11434\"|\"${OLLAMA_BASE_URL}\"|g" \
     -e "s|defaultModelId: \"qwen2.5-coder:7b\"|defaultModelId: \"${OLLAMA_DEFAULT_MODEL}\"|g" \
     "$EXT_FILE"
-  echo "[openwork-web] Ollama extension → ${OLLAMA_V1_URL} (default: ${OLLAMA_DEFAULT_MODEL})"
+  echo "[openwork-web] Ollama extension → ${OLLAMA_BASE_URL} (default: ${OLLAMA_DEFAULT_MODEL})"
 fi
 
 if [ ! -d /app/node_modules ]; then

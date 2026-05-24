@@ -1,0 +1,136 @@
+name: ${COMPOSE_PROJECT_NAME:-openwork}
+
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    command:
+      - --performance_schema=OFF
+      - --innodb-buffer-pool-size=128M
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-openwork}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-openwork}
+      MYSQL_USER: ${MYSQL_USER:-openwork}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-openwork}
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - ${DATABASE_DATA_DIR:?Set DATABASE_DATA_DIR in .env}:/var/lib/mysql
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mysqladmin ping -h 127.0.0.1 -p$${MYSQL_ROOT_PASSWORD} --silent",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 15s
+
+  openwork-host:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        OPENWORK_ORCHESTRATOR_VERSION: ${OPENWORK_ORCHESTRATOR_VERSION:-0.13.12}
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "${OPENWORK_PORT:-8787}:8787"
+      - "${OPENWORK_OPENCODE_ROUTER_PORT:-3005}:3005"
+    environment:
+      OPENWORK_TOKEN: ${OPENWORK_TOKEN:-}
+      OPENWORK_HOST_TOKEN: ${OPENWORK_HOST_TOKEN:-}
+      OPENWORK_PORT: ${OPENWORK_PORT:-8787}
+      OPENWORK_OPENCODE_PORT: ${OPENWORK_OPENCODE_PORT:-4096}
+      OPENWORK_APPROVAL_MODE: ${OPENWORK_APPROVAL_MODE:-auto}
+      OPENWORK_CORS_ORIGINS: ${OPENWORK_CORS_ORIGINS:-*}
+      OPENWORK_CONNECT_HOST: ${OPENWORK_PUBLIC_HOST:-localhost}
+      OPENWORK_WAIT_FOR_OLLAMA: ${OPENWORK_WAIT_FOR_OLLAMA:-1}
+      OPENWORK_ENABLE_OPENCODE_ROUTER: ${OPENWORK_ENABLE_OPENCODE_ROUTER:-1}
+      OPENWORK_DEV_MODE: ${OPENWORK_DEV_MODE:-1}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://192.168.50.202:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-gemma4-e4b-it-q4_K_M-98k}
+      OPENCODE_CONFIG_FORCE: ${OPENCODE_CONFIG_FORCE:-0}
+      DATABASE_URL: ${DATABASE_URL:-mysql://openwork:openwork@mysql:3306/openwork}
+    volumes:
+      - ${OPENWORK_WORKSPACE:-./workspace}:/workspace
+      - ${OPENWORK_DATA_DIR:-./data/openwork}:/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -sf http://127.0.0.1:$${OPENWORK_PORT:-8787}/health || exit 1",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 120s
+
+  openwork-web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    restart: unless-stopped
+    depends_on:
+      openwork-host:
+        condition: service_healthy
+      share:
+        condition: service_healthy
+    ports:
+      - "${WEB_PORT:-5173}:5173"
+    environment:
+      OPENWORK_TOKEN: ${OPENWORK_TOKEN:-}
+      OPENWORK_PORT: ${OPENWORK_PORT:-8787}
+      OPENWORK_PUBLIC_HOST: ${OPENWORK_PUBLIC_HOST:-localhost}
+      OPENWORK_DEV_ID: ${OPENWORK_DEV_ID:-default}
+      OPENWORK_DEV_MODE: ${OPENWORK_DEV_MODE:-1}
+      OPENWORK_GIT_REF: ${OPENWORK_GIT_REF:-dev}
+      OPENWORK_REPO: ${OPENWORK_REPO:-https://github.com/different-ai/openwork.git}
+      SHARE_PORT: ${SHARE_PORT:-3006}
+      WEB_PORT: ${WEB_PORT:-5173}
+    volumes:
+      - openwork-web-cache:/app
+      - pnpm-store:/root/.local/share/pnpm/store
+      - bun-install:/root/.bun
+
+  share:
+    build:
+      context: .
+      dockerfile: Dockerfile.share
+      args:
+        OPENWORK_GIT_REF: ${OPENWORK_GIT_REF:-dev}
+        OPENWORK_REPO: ${OPENWORK_REPO:-https://github.com/different-ai/openwork.git}
+    restart: unless-stopped
+    depends_on:
+      openwork-host:
+        condition: service_healthy
+    ports:
+      - "${SHARE_PORT:-3006}:3000"
+    environment:
+      OPENWORK_DEV_MODE: ${OPENWORK_DEV_MODE:-1}
+      LOCAL_BLOB_DIR: /data/share-blobs
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:3006}
+      PUBLIC_OPENWORK_APP_URL: ${PUBLIC_OPENWORK_APP_URL:-http://localhost:5173}
+      DATABASE_URL: ${DATABASE_URL:-mysql://openwork:openwork@mysql:3306/openwork}
+    volumes:
+      - ${SHARE_BLOB_DIR:-./data/share-blobs}:/data/share-blobs
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/api/health').then((res)=>process.exit(res.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 120s
+
+volumes:
+  openwork-web-cache:
+  pnpm-store:
+  bun-install:
